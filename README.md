@@ -5,4 +5,4 @@ Lindsey Kvarfordt - kvarforl
 
 ThuyVy Nguyen -
 
-This is Plates, a stack based language.
+This is Plates, a stack based language. It features static typing and strings. 
