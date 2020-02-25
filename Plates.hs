@@ -58,8 +58,18 @@ cmd (PushN   n)       stack   = Just(N n: stack)
 cmd (PushB   b)       stack   = Just(B b: stack)
 cmd (PushS   str)     stack   = Just(S str: stack)
 cmd (Loop    p)       stack   =undefined
-cmd (IfElse  pt pf)   stack   = undefined
+cmd (IfElse  pt pf)   (x:s)  = case x of
+                                (B True) ->  prog pt s
+                                (B False)->  prog pf s
+                                _         -> Nothing
 
+--semantic domain of prog THIS DOES NOT WORK
+prog :: Prog -> Domain
+prog []         stack = Just stack
+prog (x:s)      stack = case cmd x stack of
+                        Just s -> prog s stack
+                        _ -> Nothing
+                        
 --Syntactic Sugar
 --true :: Prog
 --true = [PushN 1, PushN 1, Equ]
