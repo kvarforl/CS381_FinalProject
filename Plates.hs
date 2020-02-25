@@ -67,9 +67,11 @@ cmd (IfElse  pt pf)   (x:s)  = case x of
 prog :: Prog -> Domain
 prog []         stack = Just stack
 prog (x:s)      stack = case cmd x stack of
-                        Just s -> prog s stack
+                        Just new_stack -> prog s new_stack
                         _ -> Nothing
-                        
+                    
+goodEx :: Prog
+goodEx = [PushN 3, PushN 2, Add]
 --Syntactic Sugar
 --true :: Prog
 --true = [PushN 1, PushN 1, Equ]
