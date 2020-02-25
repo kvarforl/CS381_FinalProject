@@ -8,63 +8,61 @@ type Prog = [Cmd]
 
 -- Do we need a pop operation ?? or can we just use (x:xs)
 
-data Cmd = 
-        |Expr
-        | Test
-        | Stmt
-
+data Cmd  
 --thing that return ints
-data Expr = 
-        |  Add
+        =  Add
         |  Sub
         |  Mul
-        |  Equ
-
 --things that return bools
-data Test =
         |  Greater
         |  Equ
-
 --thing that don't return anything
-data Stmt = PushN Int
+        |   PushN Int
         |   PushB Bool
         |   PushS String
-        |   While Prog
+        |   Loop Prog
         |   IfElse Prog Prog    
-    
+    deriving (Eq, Show)    
 --saving functions and static type systems for later
 
 -- SEMANTICS
-data StackItem = 
-        | B Bool
-        | I Int
+data StackItem 
+        = B Bool
+        | N Int
         | S String
+    deriving (Eq, Show)    
 
 type Stack = [StackItem]
 
 type Domain = Stack -> Maybe Stack
 
-evalExpr :: Expr -> Domain
-evalExpr Add (x:y:s) = PushN (x + y)
-evalExpr Sub =
-evalExpr Mul =
-evalExpr Equ =
 
 cmd :: Cmd -> Domain
-cmd makeExpr e s = evalExpr e s 
-
+cmd Add             (x:y:s) = case (x, y) of
+                                (N i, N j) -> Just (N (i + j) : s)
+                                (S i, S j) -> Just (S (i++j) : s)
+                                (_, _)     -> Nothing  
+cmd Sub             stack   =undefined
+cmd Mul             stack   =undefined
+cmd Greater         stack   =   undefined
+cmd Equ             stack   =undefined
+cmd (PushN   n)       stack   =  undefined
+cmd (PushB   b)       stack   =undefined
+cmd (PushS   str)     stack   =  undefined
+cmd (Loop    p)       stack   =undefined
+cmd (IfElse  pt pf)   stack   = undefined
 
 --Syntactic Sugar
-true :: Prog
-true = [PushN 1, PushN 1, Equ]
+--true :: Prog
+--true = [PushN 1, PushN 1, Equ]
 
-false :: Prog
-false = [PushN 0, PushN 1, Equ]
+--false :: Prog
+--false = [PushN 0, PushN 1, Equ]
 
-not :: Test -> Prog
-not e = [PushB e, IfElse false true] 
+--not :: Test -> Prog
+--not e = [PushB e, IfElse false true] 
 
-less :: Test
-less = not Greater
+--less :: Test
+--less = not Greater
 
-and :: Test -> Test
+--and :: Test -> Test
