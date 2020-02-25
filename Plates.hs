@@ -42,13 +42,21 @@ cmd Add             (x:y:s) = case (x, y) of
                                 (N i, N j) -> Just (N (i + j) : s)
                                 (S i, S j) -> Just (S (i++j) : s)
                                 (_, _)     -> Nothing  
-cmd Sub             stack   =undefined
-cmd Mul             stack   =undefined
-cmd Greater         stack   =   undefined
-cmd Equ             stack   =undefined
-cmd (PushN   n)       stack   =  undefined
-cmd (PushB   b)       stack   =undefined
-cmd (PushS   str)     stack   =  undefined
+cmd Sub             (x:y:s) = case (x,y) of
+                                (N i, N j) -> Just (N (i - j) : s)
+                                (_, _)     -> Nothing  
+cmd Mul             (x:y:s) = case (x,y) of
+                                (N i, N j) -> Just (N (i * j) : s)
+                                (_, _)     -> Nothing
+cmd Greater         (x:y:s) = case (x,y) of
+                                (N i, N j) -> if i > j then Just (B (True) : s) else Just (B (False): s)
+                                (_, _)     -> Nothing
+cmd Equ             (x:y:s) = case (x,y) of
+                                (N i, N j) -> if i == j then Just (B (True) : s) else Just (B (False): s)
+                                (_, _)     -> Nothing
+cmd (PushN   n)       stack   = Just(N n: stack)
+cmd (PushB   b)       stack   = Just(B b: stack)
+cmd (PushS   str)     stack   = Just(S str: stack)
 cmd (Loop    p)       stack   =undefined
 cmd (IfElse  pt pf)   stack   = undefined
 
