@@ -35,7 +35,7 @@ data StackItem
 type Stack = [StackItem]
 
 type Domain = Stack -> Maybe Stack
-
+    
 
 cmd :: Cmd -> Domain
 cmd Add             (x:y:s) = case (x, y) of
@@ -63,7 +63,6 @@ cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B False)->  prog pf s
                                 _         -> Nothing
 
---semantic domain of prog THIS DOES NOT WORK
 prog :: Prog -> Domain
 prog []         stack = Just stack
 prog (x:s)      stack = case cmd x stack of
