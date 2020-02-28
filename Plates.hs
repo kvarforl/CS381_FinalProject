@@ -58,11 +58,21 @@ cmd Equ             (x:y:s) = case (x,y) of
 cmd (PushN   n)       stack   = Just(N n: stack)
 cmd (PushB   b)       stack   = Just(B b: stack)
 cmd (PushS   str)     stack   = Just(S str: stack)
-cmd (Loop    p)       stack   =undefined
+cmd (Loop    p)       (x:s)   = case x of 
+                                    (N int) -> if (int > 0) then for p int s else Just s
+                                    _ -> Nothing
 cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B True) ->  prog pt s
                                 (B False)->  prog pf s
                                 _         -> Nothing
+
+--loop helper function as a for loop
+for :: Prog -> Int -> Stack -> Maybe Stack
+for p num stack = if (num > 0) then case (prog p stack) of
+                                        Just stack -> for p (num-1) stack 
+                                        _ -> Nothing      
+                                                            else Just stack
+
 --evaluates a list of commands
 prog :: Prog -> Domain
 prog []         stack = Just stack
@@ -78,6 +88,9 @@ exec p = case prog p [] of
                     
 goodEx :: Prog
 goodEx = [PushN 3, PushN 2, Add]
+
+goodEx2 :: Prog
+goodEx2 = [PushN 3, Loop [PushN 5, PushN 4]]
 
 --Syntactic Sugar
 --true :: Prog
