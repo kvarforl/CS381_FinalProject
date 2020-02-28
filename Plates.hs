@@ -86,11 +86,16 @@ exec p = case prog p [] of
             Just (x:xs) -> Just x
             _ -> Nothing
                     
-goodEx :: Prog
-goodEx = [PushN 3, PushN 2, Add]
+goodEx :: Int -> Prog
+goodEx x = [PushN 6, PushN x, Equ, IfElse [PushS "YouWin"] [PushS "YouLose"]]
 
-goodEx2 :: Prog
-goodEx2 = [PushN 3, Loop [PushN 5, PushN 4]]
+--type error
+badEx1 :: Prog
+badEx1 = [PushB False, Loop [PushS "this tries to use a boolean as a counter"]]
+
+--stack underflow error
+badEx2 :: Prog
+badEx2 = [PushN 5, PushN 6, Add, Add]
 
 --Syntactic Sugar
 --true :: Prog
