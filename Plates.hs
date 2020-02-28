@@ -53,6 +53,7 @@ cmd Greater         (x:y:s) = case (x,y) of
                                 (_, _)     -> Nothing
 cmd Equ             (x:y:s) = case (x,y) of
                                 (N i, N j) -> if i == j then Just (B (True) : s) else Just (B (False): s)
+                                (S i, S j) -> if i == j then Just (B (True) : s) else Just (B (False): s)
                                 (_, _)     -> Nothing
 cmd (PushN   n)       stack   = Just(N n: stack)
 cmd (PushB   b)       stack   = Just(B b: stack)
@@ -62,15 +63,22 @@ cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B True) ->  prog pt s
                                 (B False)->  prog pf s
                                 _         -> Nothing
-
+--evaluates a list of commands
 prog :: Prog -> Domain
 prog []         stack = Just stack
 prog (x:s)      stack = case cmd x stack of
                         Just new_stack -> prog s new_stack
                         _ -> Nothing
+
+-- starts a program with an empty stack 
+exec :: Prog -> Maybe StackItem
+exec p = case prog p [] of
+            Just (x:xs) -> Just x
+            _ -> Nothing
                     
 goodEx :: Prog
 goodEx = [PushN 3, PushN 2, Add]
+
 --Syntactic Sugar
 --true :: Prog
 --true = [PushN 1, PushN 1, Equ]
