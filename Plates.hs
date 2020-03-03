@@ -16,12 +16,16 @@ data Cmd
 --things that return bools
         |  Greater
         |  Equ
---thing that don't return anything
+--thing that don't return anything/stack operations
         |   PushN Int
         |   PushB Bool
         |   PushS String
+        |   PushF Prog
+        |   Pop
         |   Loop Prog
         |   IfElse Prog Prog    
+        |   Call
+        |   Offset Int
     deriving (Eq, Show)    
 --saving functions and static type systems for later
 
@@ -30,6 +34,7 @@ data StackItem
         = B Bool
         | N Int
         | S String
+        | F Prog
     deriving (Eq, Show)    
 
 type Stack = [StackItem]
@@ -58,6 +63,8 @@ cmd Equ             (x:y:s) = case (x,y) of
 cmd (PushN   n)       stack   = Just(N n: stack)
 cmd (PushB   b)       stack   = Just(B b: stack)
 cmd (PushS   str)     stack   = Just(S str: stack)
+cmd (PushF   prog)    stack   = Just(F prog: stack)
+cmd (Pop)             (x:s)   = Just(s)
 cmd (Loop    p)       (x:s)   = case x of 
                                     (N int) -> if (int > 0) then for p int s else Just s
                                     _ -> Nothing
@@ -65,6 +72,8 @@ cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B True) ->  prog pt s
                                 (B False)->  prog pf s
                                 _         -> Nothing
+cmd (Call)          (prog:s) = undefined
+cmd (Offset i)        stack  = undefined
 
 --loop helper function as a for loop
 for :: Prog -> Int -> Stack -> Maybe Stack
@@ -88,6 +97,9 @@ exec p = case prog p [] of
                     
 goodEx :: Int -> Prog
 goodEx x = [PushN 6, PushN x, Equ, IfElse [PushS "YouWin"] [PushS "YouLose"]]
+
+testEx :: Prog 
+testEx = [PushB True, IfElse [PushN 6] [PushN 7]]
 
 --type error
 badEx1 :: Prog
