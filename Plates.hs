@@ -147,6 +147,7 @@ typeOf (Call)          (p:s) = case p of
 				TFunc -> s
 				_ -> (TError:s)
 typeOf (Offset i)       stack  =  ((offsetsType i stack []):stack)
+typeOf (Swap)           (x:y:stack) = (y:x:stack)
 
 offsetsType :: Int->StackType->StackType-> Type
 offsetsType 0 [] stack2 = TError
