@@ -142,7 +142,13 @@ typeOf (IfElse  pt pf)   (x:s)  = case x of
 typeOf (Call)          (p:s) = case p of
 				TFunc -> s
 				_ -> (TError:s)
-typeOf (Offset i)        stack  = undefined
+typeOf (Offset i)       stack  =  ((offsetsType i stack []):stack)
+
+offsetsType :: Int->StackType->StackType-> Type
+offsetsType 0 [] stack2 = TError
+offsetsType 0 (x:stack1) stack2 = x
+offsetsType n (x:stack1) stack2 = offsetsType (n-1) (stack1) (stack2++[x])
+
 
 -- Define the semantics of type-correct programs
 
