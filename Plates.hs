@@ -65,8 +65,8 @@ cmd (PushB   b)       stack   = Just(B b: stack)
 cmd (PushS   str)     stack   = Just(S str: stack)
 cmd (PushF   prog)    stack   = Just(F prog: stack)
 cmd (Pop)             (x:s)   = Just(s)
-cmd (Loop    p)       (x:s)   = case x of 
-                                    (N int) -> if (int > 0) then for p int s else Just s
+--cmd (Loop    p)       (x:s)   = case x of 
+--                                    (N int) -> if (int > 0) then for p int s else Just s
                                     _ -> Nothing
 cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B True) ->  prog pt s
@@ -76,11 +76,29 @@ cmd (Call)          (prog:s) = undefined
 cmd (Offset i)        stack  = undefined
 
 --loop helper function as a for loop
-for :: Prog -> Int -> Stack -> Maybe Stack
-for p num stack = if (num > 0) then case (prog p stack) of
+--for :: Prog -> Int -> Stack -> Maybe Stack
+--for p num stack = if (num > 0) then case (prog p stack) of
                                         Just stack -> for p (num-1) stack 
                                         _ -> Nothing      
                                                             else Just stack
+
+--STATICALLY TYPED VARIANT
+
+-- Define the syntax of types
+data Type = TInt | TBool | TFunc | TString | TError
+type StackType = [Type]
+
+-- Define the typing relation
+typeHandle :: Stack -> StackType -> Maybe StackType
+typeHandle [] stackType = Just stackType
+typeHandle (x:stack) stackType = case typeOf x of 
+					TError   -> Nothing
+					typeItem -> typeHandle stack (typeItem:stackType)
+
+typeOf :: Cmd -> Type
+ 
+
+
 
 --evaluates a list of commands
 prog :: Prog -> Domain
