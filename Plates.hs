@@ -22,7 +22,7 @@ data Cmd
         |   PushS String
         |   PushF Prog
         |   Pop
-        |   Loop Prog
+ --       |   Loop Prog
         |   IfElse Prog Prog    
         |   Call
         |   Offset Int
@@ -67,7 +67,7 @@ cmd (PushF   prog)    stack   = Just(F prog: stack)
 cmd (Pop)             (x:s)   = Just(s)
 --cmd (Loop    p)       (x:s)   = case x of 
 --                                    (N int) -> if (int > 0) then for p int s else Just s
-                                    _ -> Nothing
+                                    --_ -> Nothing
 cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B True) ->  prog pt s
                                 (B False)->  prog pf s
@@ -80,26 +80,72 @@ cmd (Offset i)        stack  = undefined
 --loop helper function as a for loop
 --for :: Prog -> Int -> Stack -> Maybe Stack
 --for p num stack = if (num > 0) then case (prog p stack) of
-                                        Just stack -> for p (num-1) stack 
-                                        _ -> Nothing      
-                                                            else Just stack
+--                                        Just stack -> for p (num-1) stack 
+  --                                      _ -> Nothing      
+    --                                                        else Just stack
 
 --STATICALLY TYPED VARIANT
 
 -- Define the syntax of types
 data Type = TInt | TBool | TFunc | TString | TError
+	deriving(Eq,Show)
+
 type StackType = [Type]
 
 -- Define the typing relation
-typeHandle :: Stack -> StackType -> Maybe StackType
+typeHandle :: Prog -> StackType -> Maybe StackType
 typeHandle [] stackType = Just stackType
-typeHandle (x:stack) stackType = case typeOf x of 
-					TError   -> Nothing
-					typeItem -> typeHandle stack (typeItem:stackType)
+typeHandle (x:prog) stackType = case typeOf x stackType of 
+					(TError:stackType')   -> Nothing
+					stackType' -> typeHandle prog (stackType')
 
-typeOf :: Cmd -> Type
- 
+typeOf :: Cmd -> StackType -> StackType
+typeOf Add          (x:y:s) = case (x, y) of
+                                (TInt, TInt) -> (TInt:s)
+                                (TString, TString) -> (TString:s)
+                                (_, _)     -> (TError:s)  
+typeOf Sub          (x:y:s) = case (x,y) of
+                                (TInt, TInt) -> (TInt:s)
+                                (_, _)     -> (TError:s) 
+typeOf Mul          (x:y:s) = case (x,y) of
+                                (TInt, TInt) -> (TInt:s)
+                                (_, _)     -> (TError:s)
+typeOf Greater      (x:y:s) = case (x,y) of
+                                (TInt, TInt) -> (TBool:s)
+                                (_, _)     -> (TError:s)
+typeOf Equ          (x:y:s) = case (x,y) of
+                                (TInt, TInt) -> (TBool:s)
+                                (TString, TString) -> (TBool:s)
+                                (_, _)     -> (TError:s)
+typeOf (PushN   n)    stack   = (TInt:stack)
+typeOf (PushB   b)       stack   = (TBool:stack)
+typeOf (PushS   str)     stack   = (TString:stack)
+typeOf (PushF   prog)    stack   = case typeHandle prog [] of
+					Nothing -> (TError:stack)
+					Just progStackType -> ((TFunc : progStackType) ++ stack)
+typeOf (Pop)             (x:s)   = s
+--cmd (Loop    p)       (x:s)   = case x of 
+--                                    (N int) -> if (int > 0) then for p int s else Just s
+--                                    _ -> Nothing
 
+typeOf (IfElse  pt pf)   (x:s)  = case x of
+                                (TBool) ->  case typeHandle pt [] of
+						Nothing -> (TError:s)
+						Just ptStackType -> case typeHandle pf [] of
+								    	Nothing -> (TError:s)
+									Just pfStackType -> if (ptStackType == pfStackType) then (ptStackType ++ s) else (TError:s)
+                                _-> (TError:s)
+typeOf (Call)          (p:s) = case p of
+				TFunc -> s
+				_ -> (TError:s)
+typeOf (Offset i)        stack  = undefined
+
+-- Define the semantics of type-correct programs
+
+
+-- Define our interpreter
+eval :: Prog -> Maybe StackType
+eval prog = typeHandle prog []
 
 
 --evaluates a list of commands
@@ -122,8 +168,8 @@ testEx :: Prog
 testEx = [PushB True, IfElse [PushN 6] [PushN 7]]
 
 --type error
-badEx1 :: Prog
-badEx1 = [PushB False, Loop [PushS "this tries to use a boolean as a counter"]]
+--badEx1 :: Prog
+--badEx1 = [PushB False, Loop [PushS "this tries to use a boolean as a counter"]]
 
 --stack underflow error
 badEx2 :: Prog
