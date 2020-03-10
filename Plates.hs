@@ -72,7 +72,9 @@ cmd (IfElse  pt pf)   (x:s)  = case x of
                                 (B True) ->  prog pt s
                                 (B False)->  prog pf s
                                 _         -> Nothing
-cmd (Call)          (prog:s) = undefined
+cmd (Call)          (p:s) = case p of
+                                (F cs) -> prog cs s
+                                _ -> Nothing
 cmd (Offset i)        stack  = undefined
 
 --loop helper function as a for loop
