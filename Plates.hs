@@ -40,8 +40,15 @@ data StackItem
 
 type Stack = [StackItem]
 
-type Domain = Stack -> Maybe Stack
-    
+--type Domain = Stack -> Maybe Stack
+data Value
+	= NV Int
+	| BV Bool
+	| SV String
+	| Error
+
+type Domain = Stack -> Value
+  
 
 cmd :: Cmd -> Domain
 cmd Add             (x:y:s) = case (x, y) of
@@ -156,7 +163,35 @@ offsetsType n (x:stack1) stack2 = offsetsType (n-1) (stack1) (stack2++[x])
 
 
 -- Define the semantics of type-correct programs
+cmd' :: Cmd -> Stack -> Stack
+cmd' Add             (x:y:s) = case (x, y) of
+                                (N i, N j) -> (N (i + j) : s)
+                                (S i, S j) -> (S (i++j) : s) 
+cmd' Sub             (x:y:s) = (N (x - y) : s) 
+cmd' Mul             (x:y:s) = (N (x * y) : s)
+cmd' Greater         (x:y:s) = if x > y then (B (True) : s) else (B (False): s)
+cmd' Equ             (x:y:s) = case (x,y) of
+                                (N i, N j) -> if i == j then (B (True) : s) else (B (False): s)
+                                (S i, S j) -> if i == j then (B (True) : s) else (B (False): s)
+cmd' (PushN   n)       stack   = (N n: stack)
+cmd' (PushB   b)       stack   = (B b: stack)
+cmd' (PushS   str)     stack   = (S str: stack)
+cmd' (PushF   prog)    stack   = (F prog: stack)
+cmd' (Pop)             (x:s)   = (s)
+--cmd (Loop    p)       (x:s)   = case x of 
+--                                    (N int) -> if (int > 0) then for p int s else Just s
+                                    --_ -> Nothing
+cmd' (IfElse  pt pf)   (x:s)  = case x of
+                                (B True) ->  prog pt s
+                                (B False)->  prog pf s
+cmd' (Call)          (p:s) = case p of
+                                (F cs) -> prog cs s
+cmd' (Offset i)        stack  =  offsets' i stack []
+cmd' (Swap)            (x:y:stack) = (y:x:stack)
 
+offsets' :: Int->Stack->Stack-> Stack
+offsets' 0 (x:stack1) stack2 = (x:stack2++x:stack1)
+offsets' n (x:stack1) stack2 = offsets' (n-1) (stack1) (stack2++[x])
 
 -- Define our interpreter
 eval :: Prog -> Maybe StackType
@@ -165,17 +200,20 @@ eval prog = typeHandle prog []
 
 --evaluates a list of commands
 prog :: Prog -> Domain
-prog []         stack = Just stack
-prog (x:s)      stack = case cmd x stack of
-                        Just new_stack -> prog s new_stack
-                        _ -> Nothing
+prog []         (x:s) = case x of 
+				N i -> NV i
+				B b -> BV b
+				S s -> SV s			
+prog (x:p)      stack = prog p (cmd' x stack)
 
--- starts a program with an empty stack 
-exec :: Prog -> Maybe StackItem
-exec p = case prog p [] of
-            Just (x:xs) -> Just x
-            _ -> Nothing
-                    
+
+-- starts a program with an empty stack and statically type checks it
+exec :: Prog -> Value
+exec p = case eval p of 
+		Nothing -> Error
+		(TFunc:s) -> Error
+		_ 	-> prog p []
+                  
 goodEx :: Int -> Prog
 goodEx x = [PushN 6, PushN x, Equ, IfElse [PushS "YouWin"] [PushS "YouLose"]]
 
