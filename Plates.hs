@@ -75,7 +75,11 @@ cmd (IfElse  pt pf)   (x:s)  = case x of
 cmd (Call)          (p:s) = case p of
                                 (F cs) -> prog cs s
                                 _ -> Nothing
-cmd (Offset i)        stack  = undefined
+cmd (Offset i)        stack  =  offsets i stack []
+
+offsets :: Int->Stack->Stack-> Maybe Stack
+offsets 0 (x:stack1) stack2 = Just(x:stack2++x:stack1)
+offsets n (x:stack1) stack2 = offsets (n-1) (stack1) (stack2++[x])
 
 --loop helper function as a for loop
 for :: Prog -> Int -> Stack -> Maybe Stack
