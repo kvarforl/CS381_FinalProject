@@ -30,7 +30,7 @@ data StackItem
         = B Bool
         | N Int
         | S String
-        | F Prog
+        | F String [Type] Type Prog
     deriving (Eq, Show)    
 
 type Stack = [StackItem]
@@ -46,10 +46,19 @@ type Domain = Stack -> Value
 --STATICALLY TYPED VARIANT
 
 -- Define the syntax of types
-data Type = TInt | TBool | TFunc Prog | TString | TError
+data Type = TInt | TBool | TFunc String [Type] Type Prog | TString | TError
 	deriving(Eq,Show)
 
 type StackType = [Type]
+
+instance Eq Type where 
+	TInt == TInt = True
+	TBool == TBool = True
+	TString == TString = True
+	TFunc _ inputTypes outputType _ == TFunc _ inputTypes' outputType' _ =
+		inputTypes == inputTypes' && outputType == outputType'
+
+type Env = Map String ([Type], Type)
 
 -- Define the typing relation
 typeHandle :: Prog -> StackType -> Maybe StackType
@@ -58,51 +67,51 @@ typeHandle (x:prog) stackType = case typeOf x stackType of
 					(TError:stackType')   -> Nothing
 					stackType' -> typeHandle prog (stackType')
 
-typeOf :: Cmd -> StackType -> StackType
-typeOf Add          stack =  case stack of
+typeOf :: Cmd -> Env -> StackType -> StackType
+typeOf Add     _     stack =  case stack of
                                     (x:y:s) -> case (x, y) of
                                                 (TInt, TInt) -> (TInt:s)
                                                 (TString, TString) -> (TString:s)
                                                 (_, _)     -> (TError:s)
                                     _       -> (TError:stack)
                                   
-typeOf Sub          stack =  case stack of
+typeOf Sub     _     stack =  case stack of
                                     (x:y:s) -> case (x, y) of
                                                 (TInt, TInt) -> (TInt:s)
                                                 (_, _)     -> (TError:s)
                                     _       -> (TError:stack)
                                    
-typeOf Mul          stack =  case stack of
+typeOf Mul     _     stack =  case stack of
                                     (x:y:s) -> case (x, y) of
                                                 (TInt, TInt) -> (TInt:s)
                                                 (_, _)     -> (TError:s)
                                     _       -> (TError:stack)
                                   
-typeOf Greater      stack =  case stack of
+typeOf Greater _     stack =  case stack of
                                     (x:y:s) -> case (x, y) of
                                                 (TInt, TInt) -> (TBool:s)
                                                 (_, _)     -> (TError:s)
                                     _       -> (TError:stack)
                                   
-typeOf Equ          stack =  case stack of
+typeOf Equ     _     stack =  case stack of
                                     (x:y:s) -> case (x, y) of
                                                 (TInt, TInt) -> (TBool:s)
                                                 (TString, TString) -> (TBool:s)
                                                 (_, _)     -> (TError:s)
                                     _       -> (TError:stack)
                                   
-typeOf (PushN   n)    stack   = (TInt:stack)
-typeOf (PushB   b)       stack   = (TBool:stack)
-typeOf (PushS   str)     stack   = (TString:stack)
+typeOf (PushN   n)   _   stack   = (TInt:stack)
+typeOf (PushB   b)   _      stack   = (TBool:stack)
+typeOf (PushS   str) _     stack   = (TString:stack)
 typeOf (PushF   prog)    stack   = ((TFunc prog):stack)
-typeOf (Pop)             stack   = case stack of
+typeOf (Pop)         _    stack   = case stack of
                                         (x:s) -> s
                                         [] -> (TError:stack)
 --cmd (Loop    p)       (x:s)   = case x of 
 --                                    (N int) -> if (int > 0) then for p int s else Just s
 --                                    _ -> Nothing
 
-typeOf (IfElse  pt pf)   stack = case stack of 
+typeOf (IfElse  pt pf) _  stack = case stack of 
                                     (x:s)  -> case x of
                                         (TBool) ->  case typeHandle pt s of
                                                         Nothing -> (TError:s)
@@ -111,17 +120,27 @@ typeOf (IfElse  pt pf)   stack = case stack of
                                                                                 Just (y:pfStackType) -> if (x == y) then (x:s) else (TError:s)
                                         _-> (TError:s)
                                     _ -> (TError:stack)
-typeOf (Call)          stack = case stack of
+typeOf (Call)    env      stack = case stack of
                                     (p:s) -> case p of
-                                                TFunc prog -> case typeHandle prog s of 
-                                                                    Nothing -> (TError:s)
-                                                                    Just progStackType -> (progStackType++s)
+                                                TFunc name inputType outputType prog -> case lookup name env of
+												Just (inputType', outputType') -> --function makes sure inputType is satisfied, replace with outputType
+												Nothing -> case typeHandle prog s of 
+                                                                    						Nothing -> (TError:s)
+                                                                    						Just progStackType -> (progStackType++s)
                                                 _ -> (TError:s)
                                     _ -> (TError:stack)
-typeOf (Offset i)       stack  =  ((offsetsType i stack []):stack)
-typeOf (Swap)           stack = case stack of
+typeOf (Offset i)   _    stack  =  ((offsetsType i stack []):stack)
+typeOf (Swap)       _    stack = case stack of
                                     (x:y:stack) -> (y:x:stack)
                                     _ -> (TError:stack)
+
+checkFuncType :: [Type] -> StackType -> Maybe StackType
+checkFuncType [] stack = Just stack
+checkFuncType (TInt:types) (TInt:stack) = checkFuncType types stack
+checkFuncType (TBool:types) (TBool:stack) = checkFuncType types stack
+checkFuncType (TString:types) (TString:stack) = checkFuncType types stack
+checkFuncType ((TFunc _ inputTypes outputTypes _):types) ((TFunc _ inputTypes' outputTypes' _):stack) = if (equalTypes inputTypes inputTypes' && equalTypes outputTypes outputTypes') then checkFuncType types stack else Nothing
+checkFuncType _ _ = Nothing
 
 offsetsType :: Int->StackType->StackType-> Type
 offsetsType _ [] stack2 = TError
@@ -213,7 +232,7 @@ testEx2 :: Prog
 testEx2 = [PushN 3, PushF [PushB False, IfElse [PushN 1] [PushB True, PushN 2] ], Call]
 
 testEx3 :: Prog 
-testEx3 = [PushF [Add]]
+testEx3 = [PushB True, PushB False, PushF [Add], Call]
 
 testEx4 :: Prog 
 testEx4 = [Equ]
