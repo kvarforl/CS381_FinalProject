@@ -102,7 +102,7 @@ type Domain = Stack -> Value
 --STATICALLY TYPED VARIANT
 
 -- Define the syntax of types
-data Type = TInt | TBool | TFunc | TString | TError
+data Type = TInt | TBool | TFunc Prog | TString | TError
 	deriving(Eq,Show)
 
 type StackType = [Type]
@@ -150,9 +150,7 @@ typeOf Equ          stack =  case stack of
 typeOf (PushN   n)    stack   = (TInt:stack)
 typeOf (PushB   b)       stack   = (TBool:stack)
 typeOf (PushS   str)     stack   = (TString:stack)
-typeOf (PushF   prog)    stack   = case typeHandle prog stack of
-					Nothing -> (TError:stack)
-					Just progStackType -> ((TFunc : progStackType) ++ stack)
+typeOf (PushF   prog)    stack   = ((TFunc prog):stack)
 typeOf (Pop)             stack   = case stack of
                                         (x:s) -> s
                                         (x) -> [] 
@@ -162,20 +160,24 @@ typeOf (Pop)             stack   = case stack of
 --                                    _ -> Nothing
 
 typeOf (IfElse  pt pf)   (x:s)  = case x of
-                                (TBool) ->  case typeHandle pt [] of
+                                (TBool) ->  case typeHandle pt s of
                                                 Nothing -> (TError:s)
-                                                Just ptStackType -> case typeHandle pf [] of
+                                                Just (x:ptStackType) -> case typeHandle pf s of
                                                                         Nothing -> (TError:s)
-                                                                        Just pfStackType -> if (ptStackType == pfStackType) then (ptStackType ++ s) else (TError:s)
+                                                                        Just (y:pfStackType) -> if (x == y) then (x:s) else (TError:s)
                                 _-> (TError:s)
-typeOf (Call)          (p:s) = case p of
-                                    TFunc -> s
-                                    _ -> (TError:s)
+typeOf (Call)          stack = case stack of
+                                    (p:s) -> case p of
+                                                TFunc prog -> case typeHandle prog s of 
+                                                                    Nothing -> (TError:s)
+                                                                    Just progStackType -> (progStackType++s)
+                                                _ -> (TError:s)
+                                    _ -> (TError:stack)
 typeOf (Offset i)       stack  =  ((offsetsType i stack []):stack)
 typeOf (Swap)           (x:y:stack) = (y:x:stack)
 
 offsetsType :: Int->StackType->StackType-> Type
-offsetsType 0 [] stack2 = TError
+offsetsType _ [] stack2 = TError
 offsetsType 0 (x:stack1) stack2 = x
 offsetsType n (x:stack1) stack2 = offsetsType (n-1) (stack1) (stack2++[x])
 
@@ -236,17 +238,23 @@ progStack (x:p)      stack = progStack p (cmd' x stack)
 exec :: Prog -> Value
 exec p = case eval p of 
 		Nothing -> Error
-		Just (TFunc:s) -> Error
+		Just (TFunc prog:s) -> Error
 		_ 	-> prog p []
                   
 goodEx1 :: Int -> Prog
 goodEx1 x = [PushN 6, PushN x, Equ, IfElse [PushS "YouWin"] [PushS "YouLose"]]
 
 goodEx2 :: Int -> Prog
-goodEx2 x = [PushF [Offset 0, PushN 0, Equ, IfElse [Pop, Pop, PushN 1] [Offset 1, PushN 1, Offset 2, Sub, Offset 1, Call, Mul]], PushN x, Offset 1, Call]
+goodEx2 x = [PushN x, PushF [Offset 0, PushN 0, Equ, IfElse [Pop, Pop, PushN 1] [Offset 1, PushN 1, Offset 2, Sub, Offset 1, Call, Mul]], PushN x, Offset 1, Call]
 
 testEx :: Prog 
-testEx = [PushN 3, PushF [Offset 0, PushN 1, Equ], PushN 1, Offset 1, Call]
+testEx = [PushF [Offset 0, PushN 0, Equ, IfElse [Pop, Pop, PushN 1] [Offset 1, PushN 1, Offset 2, Sub, Offset 1, Call]], PushN 3, Offset 1, Call]
+
+testEx2 :: Prog
+testEx2 = [PushN 3, PushF [PushB False, IfElse [PushN 1] [PushB True, PushN 2] ], Call]
+
+testEx3 :: Prog 
+testEx3 = [PushF [Add]]
 
 --type error
 --badEx1 :: Prog
