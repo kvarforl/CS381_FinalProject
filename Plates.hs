@@ -8,14 +8,11 @@ import Data.Map
 type Prog = [Cmd]
 
 data Cmd  
---thing that return ints
-        =  Add
-        |  Sub
-        |  Mul
---things that return bools
-        |  Greater
-        |  Equ
---thing that don't return anything/stack operations
+        =   Add
+        |   Sub
+        |   Mul
+        |   Greater
+        |   Equ
         |   PushN Int
         |   PushB Bool
         |   PushS String
@@ -39,10 +36,10 @@ data StackItem
 type Stack = [StackItem]
 
 data Value
-	= NV Int
-	| BV Bool
-	| SV String
-	| Error
+    = NV Int
+    | BV Bool
+    | SV String
+    | Error
     deriving(Eq, Show)
 type Domain = Stack -> Value
 
@@ -50,10 +47,11 @@ type Domain = Stack -> Value
 
 -- Define the syntax of types
 data Type = TInt | TBool | TFunc String [Type] Type Prog | TString | TError | TFuncRec String [Type] Type Prog
-	deriving(Show)
+    deriving(Show)
 
 type StackType = [Type]
 
+--allows equality checking of Types (including input types and output types) but excluding funtion names
 instance Eq Type where 
     TInt == TInt = True
     TBool == TBool = True
@@ -106,15 +104,15 @@ typeOf Equ     _     stack =  case stack of
                                                 (_, _)     -> (TError:s)
                                     _       -> (TError:stack)
                                   
-typeOf (PushN   n)   _   stack   = (TInt:stack)
+typeOf (PushN   n)   _      stack   = (TInt:stack)
 typeOf (PushB   b)   _      stack   = (TBool:stack)
-typeOf (PushS   str) _     stack   = (TString:stack)
-typeOf (PushF name inputTypes outputType prog)  _  stack   = ((TFunc name inputTypes outputType prog):stack)
-typeOf (PushFRec name inputTypes outputType prog) _    stack   = ((TFuncRec name inputTypes outputType prog):stack)
-typeOf (Pop)         _    stack   = case stack of
+typeOf (PushS   str) _      stack   = (TString:stack)
+typeOf (PushF name inputTypes outputType prog)      _   stack   = ((TFunc name inputTypes outputType prog):stack)
+typeOf (PushFRec name inputTypes outputType prog)   _   stack   = ((TFuncRec name inputTypes outputType prog):stack)
+typeOf (Pop)         _      stack   = case stack of
                                         (x:s) -> s
                                         [] -> (TError:stack)
-typeOf (IfElse  pt pf) env  stack = case stack of 
+typeOf (IfElse  pt pf) env  stack   = case stack of 
                                     (x:s)  -> case x of
                                         (TBool) ->  case typeHandle pt env s of
                                                         Nothing -> (TError:s)
@@ -123,7 +121,7 @@ typeOf (IfElse  pt pf) env  stack = case stack of
                                                                                 Just (y:pfStackType) -> if (x == y) then (x:s) else (TError:s)
                                         _-> (TError:s)
                                     _ -> (TError:stack)
-typeOf (Call)    env      stack = case stack of
+typeOf (Call)    env        stack   = case stack of
                                     (p:s) -> case p of
                                                 TFunc name inputType outputType prog -> case lookup name env of
                                                                                             Just (inputType', outputType') -> case checkFuncType inputType' s of
@@ -200,23 +198,23 @@ offsets' n (x:stack1) stack2 = offsets' (n-1) (stack1) (stack2++[x])
 --evaluates a list of commands
 prog :: Prog -> Domain
 prog []         (x:s) = case x of 
-				N i -> NV i
-				B b -> BV b
-				S s -> SV s			
+                N i -> NV i
+                B b -> BV b
+                S s -> SV s            
 prog (x:p)      stack = prog p (cmd' x stack)
 
 
 progStack :: Prog -> Stack -> Stack
-progStack []         stack = stack		
+progStack []         stack = stack        
 progStack (x:p)      stack = progStack p (cmd' x stack)
 
 
 -- starts a program with an empty stack and statically type checks it
 exec :: Prog -> Value
 exec p = case typeHandle p (fromList []) [] of 
-		Nothing -> Error
-		Just (TFunc _ _ _ prog:s) -> Error
-		_ 	-> prog p []
+        Nothing -> Error
+        Just (TFunc _ _ _ prog:s) -> Error
+        _     -> prog p []
 
 --EXAMPLES:
 
@@ -240,16 +238,3 @@ badEx2 = [PushN 6, PushB False, Add]
 --stack underflow error
 badEx3 :: Prog
 badEx3 = [PushN 1, PushN 2, Add, Add]
-
---testing for debugging
---testEx :: Prog 
---testEx = [PushF [Offset 0, PushN 1, Equ, IfElse [] [Offset 1, PushN 1, Offset 2, Sub, Offset 1, Call, Swap, Pop, Mul]], PushN 3, Offset 1, Call]
-
---testEx2 :: Prog
---testEx2 = [PushN 3, PushF [PushB False, IfElse [PushN 1] [PushB True, PushN 2] ], Call]
-
---testEx3 :: Prog 
---testEx3 = [PushB True, PushB False, PushF [Add], Call]
-
-testEx4 :: Prog 
-testEx4 = [PushFRec "Add" [TInt, TInt] TInt [Offset 2, Call], PushN 1, PushN 2, Offset 2, Call]
